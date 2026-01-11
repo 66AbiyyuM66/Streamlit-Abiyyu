@@ -1,5 +1,5 @@
 import pandas as pd
-import matplotlib.pyplot as plt
+import plotly.express as px
 import seaborn as sns
 import streamlit as st
 from babel.numbers import format_currency
@@ -88,10 +88,10 @@ min_date = all_abiyyu["order_date"].min()
 max_date = all_abiyyu["order_date"].max()
  
 with st.sidebar:
-    # Menambahkan logo perusahaan
+    
     st.image("https://raw.githubusercontent.com/mhvvn/dashboard_streamlit/refs/heads/main/img/tshirt.png", width=80)
     
-    # Mengambil start_date & end_date dari date_input
+    
     start_date, end_date = st.date_input(
         label='Rentang Waktu',min_value=min_date,
         max_value=max_date,
@@ -110,156 +110,208 @@ rfm_abiyyu = create_rfm_abiyyu(main_abiyyu)
 
 st.header('My Collection Dashboard :sparkles:')
 
-st.subheader('Daily Orders')
+st.subheader("Daily Orders")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    total_orders = daily_orders_abiyyu.order_count.sum()
-    st.metric("Total orders", value=total_orders)
+    total_orders = daily_orders_abiyyu["order_count"].sum()
+    st.metric("Total orders", total_orders)
 
 with col2:
-    total_revenue = format_currency(daily_orders_abiyyu.revenue.sum(), "AUD", locale='es_CO')
-    st.metric("Total Revenue", value=total_revenue)
+    total_revenue = format_currency(
+        daily_orders_abiyyu["revenue"].sum(),
+        "AUD",
+        locale="es_CO"
+    )
+    st.metric("Total Revenue", total_revenue)
 
-fig, ax = plt.subplots(figsize=(16, 8))
-ax.plot(
-    daily_orders_abiyyu["order_date"],
-    daily_orders_abiyyu["order_count"],
-    marker='o',
-    linewidth=2,
-    color="#90CAF9"
+fig = px.line(
+    daily_orders_abiyyu,
+    x="order_date",
+    y="order_count",
+    markers=True,
+    title="Daily Order Trend"
 )
-ax.tick_params(axis='y', labelsize=20)
-ax.tick_params(axis='x', labelsize=15)
 
-st.pyplot(fig)
+fig.update_traces(
+    line=dict(width=2, color="#90CAF9"),
+    marker=dict(size=6)
+)
 
+fig.update_layout(
+    xaxis_title="Order Date",
+    yaxis_title="Order Count",
+    template="plotly_white",
+    height=450,
+    xaxis_tickfont_size=14,
+    yaxis_tickfont_size=16
+)
+
+st.plotly_chart(fig, use_container_width=True)
 
 st.subheader("Best & Worst Performing Product")
  
-fig, ax = plt.subplots(nrows=1, ncols=2, figsize=(35, 15))
- 
-colors = ["#90CAF9", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
- 
-sns.barplot(x="quantity_x", y="product_name", data=sum_order_items_abiyyu.head(5), palette=colors, ax=ax[0])
-ax[0].set_ylabel(None)
-ax[0].set_xlabel("Number of Sales", fontsize=30)
-ax[0].set_title("Best Performing Product", loc="center", fontsize=50)
-ax[0].tick_params(axis='y', labelsize=35)
-ax[0].tick_params(axis='x', labelsize=30)
- 
-sns.barplot(x="quantity_x", y="product_name", data=sum_order_items_abiyyu.sort_values(by="quantity_x", ascending=True).head(5), palette=colors, ax=ax[1])
-ax[1].set_ylabel(None)
-ax[1].set_xlabel("Number of Sales", fontsize=30)
-ax[1].invert_xaxis()
-ax[1].yaxis.set_label_position("right")
-ax[1].yaxis.tick_right()
-ax[1].set_title("Worst Performing Product", loc="center", fontsize=50)
-ax[1].tick_params(axis='y', labelsize=35)
-ax[1].tick_params(axis='x', labelsize=30)
- 
-st.pyplot(fig)
+best_abiyyu = (
+    sum_order_items_abiyyu
+    .sort_values(by="quantity_x", ascending=False)
+    .head(5)
+)
+
+worst_abiyyu = (
+    sum_order_items_abiyyu
+    .sort_values(by="quantity_x", ascending=True)
+    .head(5)
+)
+
+col1, col2 = st.columns(2)
+
+with col1:
+    fig_best = px.bar(
+        best_abiyyu,
+        x="quantity_x",
+        y="product_name",
+        orientation="h",
+        title="Best Performing Product",
+        color="product_name",
+        labels={
+            "quantity_x": "quantity_x",
+            "product_name": "product_name"
+        },
+        height=500,
+        template="plotly_dark"
+    )
+
+    st.plotly_chart(fig_best, use_container_width=True)
+
+with col2:
+    fig_worst = px.bar(
+        worst_abiyyu,
+        x="quantity_x",
+        y="product_name",
+        orientation="h",
+        title="Worst Performing Product",
+        color="product_name",
+        labels={
+            "quantity_x": "quantity_x",
+            "product_name": "product_name"
+        },
+        height=500,
+        template="plotly_dark"
+    )
+
+    st.plotly_chart(fig_worst, use_container_width=True)
 
 st.subheader("Customer Demographics")
- 
-col1, col2 = st.columns(2)
- 
-with col1:
-    fig, ax = plt.subplots(figsize=(20, 10))
- 
-    sns.barplot(
-        y="customer_count", 
-        x="gender",
-        data=bygender_abiyyu.sort_values(by="customer_count", ascending=False),
-        palette=colors,
-        ax=ax
-    )
-    ax.set_title("Number of Customer by Gender", loc="center", fontsize=50)
-    ax.set_ylabel(None)
-    ax.set_xlabel(None)
-    ax.tick_params(axis='x', labelsize=35)
-    ax.tick_params(axis='y', labelsize=30)
-    st.pyplot(fig)
- 
-with col2:
-    fig, ax = plt.subplots(figsize=(20, 10))
-    
-    colors = ["#D3D3D3", "#90CAF9", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
- 
-    sns.barplot(
-        y="customer_count", 
-        x="age_group",
-        data=byage_abiyyu.sort_values(by="age_group", ascending=False),
-        palette=colors,
-        ax=ax
-    )
-    ax.set_title("Number of Customer by Age", loc="center", fontsize=50)
-    ax.set_ylabel(None)
-    ax.set_xlabel(None)
-    ax.tick_params(axis='x', labelsize=35)
-    ax.tick_params(axis='y', labelsize=30)
-    st.pyplot(fig)
- 
-fig, ax = plt.subplots(figsize=(20, 10))
-colors = ["#90CAF9", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3", "#D3D3D3"]
-sns.barplot(
-    x="customer_count", 
-    y="state",
-    data=bystate_abiyyu.sort_values(by="customer_count", ascending=False),
-    palette=colors,
-    ax=ax
-)
-ax.set_title("Number of Customer by States", loc="center", fontsize=30)
-ax.set_ylabel(None)
-ax.set_xlabel(None)
-ax.tick_params(axis='y', labelsize=20)
-ax.tick_params(axis='x', labelsize=20)
 
-st.pyplot(fig)
+fig_gender = px.bar(
+    bygender_abiyyu.sort_values(by="customer_count", ascending=False),
+    x="gender",
+    y="customer_count",
+    color="gender",
+    title="Number of Customer by Gender",
+    labels={
+        "gender": "gender",
+        "customer_count": "customer_count"
+    },
+    height=450,
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig_gender, use_container_width=True)
+
+fig_age = px.bar(
+    byage_abiyyu.sort_values(by="customer_count", ascending=False),
+    x="age_group",
+    y="customer_count",
+    color="age_group",
+    title="Number of Customer by Age Group",
+    labels={
+        "age_group": "age_group",
+        "customer_count": "customer_count"
+    },
+    height=450,
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig_age, use_container_width=True)
+
+fig_state = px.bar(
+    bystate_abiyyu.sort_values(by="customer_count", ascending=False),
+    x="customer_count",
+    y="state",
+    orientation="h",
+    color="state",
+    title="Number of Customer by State",
+    labels={
+        "customer_count": "customer_count",
+        "state": "state"
+    },
+    height=550,
+    template="plotly_dark"
+)
+
+st.plotly_chart(fig_state, use_container_width=True)
 
 st.subheader("Best Customer Based on RFM Parameters")
- 
-col1, col2, col3 = st.columns(3)
- 
-with col1:
-    avg_recency = round(rfm_abiyyu.recency.mean(), 1)
-    st.metric("Average Recency (days)", value=avg_recency)
- 
-with col2:
-    avg_frequency = round(rfm_abiyyu.frequency.mean(), 2)
-    st.metric("Average Frequency", value=avg_frequency)
- 
-with col3:
-    avg_frequency = format_currency(rfm_abiyyu.monetary.mean(), "AUD", locale='es_CO') 
-    st.metric("Average Monetary", value=avg_frequency)
- 
-fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(35, 15))
-colors = ["#90CAF9", "#90CAF9", "#90CAF9", "#90CAF9", "#90CAF9"]
- 
-sns.barplot(y="recency", x="customer_id", data=rfm_abiyyu.sort_values(by="recency", ascending=True).head(5), palette=colors, ax=ax[0])
-ax[0].set_ylabel(None)
-ax[0].set_xlabel("customer_id", fontsize=30)
-ax[0].set_title("By Recency (days)", loc="center", fontsize=50)
-ax[0].tick_params(axis='y', labelsize=30)
-ax[0].tick_params(axis='x', labelsize=35)
- 
-sns.barplot(y="frequency", x="customer_id", data=rfm_abiyyu.sort_values(by="frequency", ascending=False).head(5), palette=colors, ax=ax[1])
-ax[1].set_ylabel(None)
-ax[1].set_xlabel("customer_id", fontsize=30)
-ax[1].set_title("By Frequency", loc="center", fontsize=50)
-ax[1].tick_params(axis='y', labelsize=30)
-ax[1].tick_params(axis='x', labelsize=35)
- 
-sns.barplot(y="monetary", x="customer_id", data=rfm_abiyyu.sort_values(by="monetary", ascending=False).head(5), palette=colors, ax=ax[2])
-ax[2].set_ylabel(None)
-ax[2].set_xlabel("customer_id", fontsize=30)
-ax[2].set_title("By Monetary", loc="center", fontsize=50)
-ax[2].tick_params(axis='y', labelsize=30)
-ax[2].tick_params(axis='x', labelsize=35)
- 
-st.pyplot(fig)
 
-st.caption('Copyright (c) My Collection 2025')
+col1, col2, col3 = st.columns(3)
+
+avg_recency = round(rfm_abiyyu["recency"].mean(), 1)
+avg_frequency = round(rfm_abiyyu["frequency"].mean(), 2)
+avg_monetary = f"AUD {rfm_abiyyu['monetary'].mean():,.2f}"
+
+with col1:
+    st.metric("Average Recency (days)", avg_recency)
+
+with col2:
+    st.metric("Average Frequency", avg_frequency)
+
+with col3:
+    st.metric("Average Monetary", avg_monetary)
+
+st.markdown("---")
+
+top_recency = rfm_abiyyu.sort_values("recency", ascending=True).head(5)
+top_frequency = rfm_abiyyu.sort_values("frequency", ascending=False).head(5)
+top_monetary = rfm_abiyyu.sort_values("monetary", ascending=False).head(5)
+
+fig_recency = px.bar(
+    top_recency,
+    x="customer_id",
+    y="recency",
+    title="Top Customers by Recency",
+    template="plotly_dark"
+)
+
+fig_frequency = px.bar(
+    top_frequency,
+    x="customer_id",
+    y="frequency",
+    title="Top Customers by Frequency",
+    template="plotly_dark"
+)
+
+fig_monetary = px.bar(
+    top_monetary,
+    x="customer_id",
+    y="monetary",
+    title="Top Customers by Monetary",
+    template="plotly_dark"
+)
+
+c1, c2, c3 = st.columns(3)
+
+with c1:
+    st.plotly_chart(fig_recency, use_container_width=True)
+
+with c2:
+    st.plotly_chart(fig_frequency, use_container_width=True)
+
+with c3:
+    st.plotly_chart(fig_monetary, use_container_width=True)
+
+st.caption("Abiyyu Muflih Kurnia")
+st.caption("© My Collection 2025")
 
 
